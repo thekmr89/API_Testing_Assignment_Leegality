@@ -1,35 +1,61 @@
 # Interview notes
 
-## Architecture
+## What the framework does
 
-`Config` owns environment/system-property overrides and safe defaults. `RequestSpecFactory` centralizes the base URI, JSON headers, timeouts, and Allure REST filter. `AuthClient`, `HealthClient`, and `BookingClient` contain endpoint request construction only; tests own assertions. Jackson models keep normal booking payloads readable, while maps are used deliberately for malformed-type cases.
+The project sends requests to the Restful Booker sandbox and keeps request construction separate from test assertions. Tests create their own data, verify the response and persisted state, and clean up any bookings they created.
 
-`BaseTest` creates a fresh ID set before each method and performs best-effort authenticated cleanup afterward. `TestDataFactory` creates unique names and future dates, so tests do not depend on the sandbox's seeded records. No parallel execution is configured because this is a shared, self-resetting service.
+The main flow is:
 
-## REST Assured and authentication
+1. `Config` reads the base URL, credentials, and timeout values from JVM properties or environment variables.
+2. `RequestSpecFactory` creates the common REST Assured specifications.
+3. `AuthClient`, `HealthClient`, and `BookingClient` contain endpoint request code.
+4. Test classes call those clients and keep the business assertions next to the scenario.
+5. `BaseTest` tracks created booking IDs and attempts authenticated cleanup after every test.
 
-Clients use `given().spec(...)` and reusable path/query parameters. The valid auth flow posts credentials to `/auth`, reads the token with Jackson, and sends it as `Cookie: token=<token>` for PUT, PATCH, and DELETE. Authentication requests use a separate request spec without the generic Allure body attachment, preventing credential leakage. Negative auth tests assert the correct business contract even though the API returns HTTP 200.
+## Why REST Assured and TestNG
 
-## TestNG lifecycle and data providers
+REST Assured gives the tests readable request and response syntax, path parameters, response-body assertions, and JSON Schema validation without building a custom HTTP wrapper.
 
-`@BeforeMethod` clears fixture state; `@AfterMethod(alwaysRun = true)` deletes any created IDs. TestNG data providers cover negative/zero prices, malformed payloads, invalid dates, and the three protected write operations without copy-pasted test methods. Groups include `smoke`, `regression`, `authentication`, `crud`, `negative`, and `contract`.
+TestNG provides the lifecycle hooks, data providers, groups, descriptions, and listener support needed for this assignment. Data providers keep related boundary cases together without duplicating test methods.
 
-## Assertions and schemas
+## API clients and models
 
-Assertions are kept in test classes so each test communicates its business intent. They check status, response body fields, persistence after PUT/PATCH, deletion behavior, and non-existent IDs. JSON Schema Validator checks the booking object, create response, and list response. The schemas require nested booking dates and correct primitive types.
+The clients return REST Assured `Response` objects. This keeps assertions in the tests and lets each test choose the checks that matter for its scenario. `Booking`, `BookingDates`, `BookingResponse`, and `AuthResponse` make normal JSON payloads readable. Maps are used only where intentionally malformed values are needed.
 
-## Reporting
+`RequestSpecFactory` owns the base URL, JSON headers, timeouts, and Allure filter. Authentication requests do not use the generic HTTP attachment filter, which prevents credentials from being written to the report. Authenticated write requests also use the attachment-free specification so the token cookie is not exposed.
 
-`allure-rest-assured` attaches sanitized request/response HTML to each API call, and `FailureListener` adds the test name, description, and assertion context on failure. Allure annotations provide feature, severity, description, and navigable grouping. The generated HTML report is checked into `reports/allure-report/index.html`; raw results remain build output.
+## Authentication
 
-## Retry trade-off
+The valid flow posts the configured username and password to `/auth`, reads the returned token with Jackson, and sends it as the `token` cookie for PUT, PATCH, and DELETE. Invalid and missing credentials are tested against the expected 4xx contract. The public API currently returns HTTP 200 for those cases, so those tests intentionally fail and document BUG-004.
 
-The public service can cold-start or return transient 418/5xx responses. `BookingClient` performs at most one reissue for those transient conditions; ordinary 4xx business responses and assertion failures are never retried. This keeps the retry policy narrow and avoids turning an invalid-data test into a second business operation. The shared request spec uses the exact `Accept: application/json` header because the sandbox rejects REST Assured's expanded content-type Accept list with a misleading 418.
+## Test data and cleanup
 
-## Defects found
+`TestDataFactory` creates unique names with a UUID suffix and uses future dates. This avoids dependence on the sandbox's initial records. Tests run sequentially because the service is shared and resets approximately every ten minutes.
 
-The suite confirms negative and zero prices are accepted, reversed/equal date ranges are accepted, invalid calendar dates are normalized, malformed booking payloads return HTTP 500 instead of a client validation error, and invalid/missing auth returns HTTP 200. The most consequential findings are detailed with cURL and evidence in `BUGS.md`.
+`BaseTest` clears the tracked IDs before each method. After the method, it obtains a token and deletes every ID created by that test. Cleanup is best effort: if authentication or deletion fails, the original test result remains visible.
 
-## Design trade-offs
+## Assertions and negative tests
 
-The framework intentionally avoids a large generic abstraction layer: clients are small and explicit, while common concerns live in one request-spec factory and one fixture base. It does not perform load testing or run in parallel because those would add little signal for this assignment and could contaminate the shared sandbox. A failing test for a known defect is preserved as a regression guard rather than marked passed.
+The tests check status codes, response fields, booking IDs, persistence after PUT/PATCH, deletion, authorization, and JSON schemas. Negative tests express the behavior the API should provide: invalid prices and dates, malformed payloads, invalid IDs, and missing authentication should be rejected.
+
+The failing negative tests are intentional. They show that the sandbox accepts negative or zero prices, accepts invalid date ranges, normalizes an invalid calendar date, returns 200 for failed authentication, and returns 500 for malformed booking payloads. The assertions are not weakened to make the build green; the evidence is recorded in `BUGS.md`.
+
+## Allure reporting
+
+`allure-testng` collects TestNG metadata such as feature, severity, description, and failure status. `allure-rest-assured` attaches request and response details for ordinary API calls. `FailureListener` adds the test name and assertion exception when a test fails.
+
+Generate the report with:
+
+```bash
+mvn io.qameta.allure:allure-maven:2.15.1:report
+```
+
+The generated report is under `target/site/allure-maven-plugin`. The submitted snapshot is `reports/allure-report/index.html`.
+
+## Retry and sandbox behavior
+
+The sandbox can cold-start or briefly return transient 418/5xx responses. `BookingClient` retries once for those conditions; ordinary 4xx responses and assertion failures are not retried. The exact `Accept: application/json` header is deliberate because the sandbox rejects REST Assured's expanded default Accept header with HTTP 418.
+
+## Design choices
+
+The framework uses a few small clients and one shared request-spec factory instead of a generic repository or service layer. That keeps the request code reusable while leaving each assertion visible in the test that owns it. The scope is functional API testing; load and parallel testing would not be appropriate for this shared resettable sandbox.

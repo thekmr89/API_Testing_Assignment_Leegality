@@ -51,8 +51,8 @@ public class BookingClient {
 
     private Response retryTransient(Supplier<Response> request, boolean retryServerError) {
         Response response = request.get();
-        boolean transientFailure = response != null && (response.statusCode() == 418
-                || (retryServerError && response.statusCode() >= 500));
+        boolean transientFailure = response.statusCode() == 418
+                || (retryServerError && response.statusCode() >= 500);
         if (transientFailure) {
             try {
                 Thread.sleep(500);

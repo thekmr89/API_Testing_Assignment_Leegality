@@ -24,10 +24,6 @@ public final class Config {
         return integerValue("booker.readTimeoutMs", "BOOKER_READ_TIMEOUT_MS", 30000);
     }
 
-    public static int retryAttempts() {
-        return integerValue("booker.retryAttempts", "BOOKER_RETRY_ATTEMPTS", 2);
-    }
-
     private static String value(String property, String environment, String fallback) {
         String propertyValue = System.getProperty(property);
         if (propertyValue != null && !propertyValue.isBlank()) {

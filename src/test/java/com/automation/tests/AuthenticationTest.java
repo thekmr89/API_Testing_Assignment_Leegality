@@ -3,7 +3,6 @@ package com.automation.tests;
 import com.automation.base.BaseTest;
 import com.automation.config.Config;
 import com.automation.models.AuthResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
@@ -16,7 +15,6 @@ import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
 
 @Feature("Authentication")
 public class AuthenticationTest extends BaseTest {
@@ -25,7 +23,7 @@ public class AuthenticationTest extends BaseTest {
     @Description("Verifies the authentication contract needed by protected booking operations.")
     public void validCredentialsShouldReturnToken() throws Exception {
         Response response = authClient.authenticate(Config.username(), Config.password());
-        AuthResponse auth = new ObjectMapper().readValue(response.asString(), AuthResponse.class);
+        AuthResponse auth = objectMapper.readValue(response.asString(), AuthResponse.class);
         response.then().statusCode(200).body("token", not(emptyOrNullString()));
         org.testng.Assert.assertNotNull(auth.getToken());
     }

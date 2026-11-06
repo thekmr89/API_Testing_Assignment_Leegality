@@ -1,30 +1,38 @@
 # Leegality API Automation Assignment
 
-Production-style API automation for the [Restful Booker](https://restful-booker.herokuapp.com) sandbox, built as the Leegality QA Engineer take-home submission.
+This project tests the [Restful Booker](https://restful-booker.herokuapp.com) API with Java, REST Assured, Maven, and TestNG. It was created for the Leegality QA Engineer assignment.
 
-## Overview
-
-The suite covers health, authentication, booking list/filtering, retrieve, create, full update, partial update, and delete. It validates response bodies and persistence, not only status codes, and intentionally keeps correct negative assertions failing when the sandbox accepts invalid business data. The suite contains 23 TestNG scenarios, including data-driven price, payload, date, and authorization boundaries.
+The tests cover the health check, authentication, booking search, booking CRUD operations, authorization, malformed requests, and boundary values. Tests create their own bookings instead of relying on the sandbox's seeded records.
 
 ## Technology
 
-Java 17, Maven, REST Assured, TestNG, Jackson, REST Assured JSON Schema Validator, Allure TestNG/REST Assured, SLF4J, Logback, and Git.
+- Java 17
+- Maven
+- REST Assured
+- TestNG
+- Jackson
+- REST Assured JSON Schema Validator
+- Allure TestNG and Allure REST Assured
+- SLF4J and Logback
 
 ## Project structure
 
 ```text
 src/main/java/com/automation
-├── clients       # Auth, health, and booking endpoint clients
-├── config        # System-property/environment configuration
-├── models        # Jackson request/response models
-├── listeners     # Allure failure context listener
-└── utils         # Request specs and unique test-data factory
+|-- clients       API request classes
+|-- config        environment and JVM property configuration
+|-- models        booking and authentication models
+|-- listeners     Allure failure listener
+`-- utils         request specifications and test data
+
 src/main/resources
-├── schemas       # Booking, create-response, and list schemas
-└── logback.xml
+|-- schemas       booking JSON schemas
+`-- logback.xml
+
 src/test/java/com/automation
-├── base          # Per-test fixture tracking and cleanup
-└── tests         # Health, auth, CRUD, and validation scenarios
+|-- base          fixture tracking and cleanup
+`-- tests         health, authentication, CRUD, and validation tests
+
 testng.xml
 BUGS.md
 INTERVIEW_NOTES.md
@@ -33,7 +41,7 @@ reports/allure-report/index.html
 
 ## Prerequisites and configuration
 
-Install Java 17 and Maven. Provide the assignment credentials through environment variables without editing source:
+Install Java 17 and Maven. The API credentials should be supplied outside the source code:
 
 ```powershell
 $env:BOOKER_BASE_URL = "https://restful-booker.herokuapp.com"
@@ -41,7 +49,17 @@ $env:BOOKER_USERNAME = "<assignment username>"
 $env:BOOKER_PASSWORD = "<assignment password>"
 ```
 
-Equivalent JVM properties are supported: `-Dbooker.baseUrl`, `-Dbooker.username`, `-Dbooker.password`, `-Dbooker.connectTimeoutMs`, `-Dbooker.readTimeoutMs`, and `-Dbooker.retryAttempts`.
+JVM properties are also supported:
+
+```text
+-Dbooker.baseUrl
+-Dbooker.username
+-Dbooker.password
+-Dbooker.connectTimeoutMs
+-Dbooker.readTimeoutMs
+```
+
+The username and password have no source-code fallback. This prevents credentials from being committed accidentally.
 
 ## Running tests
 
@@ -51,30 +69,37 @@ mvn clean test
 mvn -Dgroups=smoke test
 ```
 
-The complete run is expected to show failures for confirmed sandbox defects recorded in `BUGS.md`; those assertions are deliberately not weakened. REST Assured attaches HTTP requests and responses to Allure results, excluding authentication requests from the generic body logger so credentials are not exposed.
+The complete suite contains 23 TestNG invocations. Some negative tests are expected to fail because they expose confirmed defects in the public sandbox. Those assertions are intentionally kept strict; see `BUGS.md`.
 
-## Allure report
+The suite runs sequentially. Each test creates unique data, records any created booking ID, and attempts cleanup in `@AfterMethod`. Cleanup is best effort so it cannot hide the original test failure.
 
-After a test run, generate the portable HTML report with:
+## Coverage
+
+- `GET /ping` health check.
+- `POST /auth` valid, invalid, and missing credentials.
+- `GET /booking` list and firstname filtering.
+- `GET /booking/{id}` retrieval, missing IDs, and invalid IDs.
+- `POST /booking` successful creation and invalid input.
+- `PUT /booking/{id}` full update.
+- `PATCH /booking/{id}` partial update.
+- `DELETE /booking/{id}` deletion and post-delete verification.
+- Unauthorized PUT, PATCH, and DELETE requests.
+- JSON Schema validation for booking, create-response, and list responses.
+
+## Allure reporting
+
+Generate a report from the latest test results with:
 
 ```bash
 mvn io.qameta.allure:allure-maven:2.15.1:report
 ```
 
-Open `target/site/allure-maven-plugin/index.html`. The submitted reviewer-readable snapshot is `reports/allure-report/index.html` and is generated from the executed Allure results. Raw `target/` and transient Allure data are ignored by Git.
+The generated report is written to `target/site/allure-maven-plugin/index.html`. A reviewer-readable snapshot from the executed suite is checked in at `reports/allure-report/index.html`.
 
-## Test strategy and reliability
+Request and response attachments are added for API calls. Authentication requests use a separate request specification so credentials and tokens are not written to those generic attachments. Failed tests also receive a failure-context attachment from `FailureListener`.
 
-Each test creates its own uniquely named booking and tracks its ID for teardown. No test depends on the ten preloaded records, test order, or another test's ID. Cleanup is best effort and never replaces the original assertion failure. The client uses bounded retries only for the sandbox's transient cold-start/server-throttle responses; business assertion failures are not retried. Tests run sequentially because the sandbox is shared and resets approximately every ten minutes.
+## Test strategy and limitations
 
-Schema checks cover booking retrieval, creation, and list responses. The suite deliberately does not attempt load testing, concurrency testing, or exhaustive query combinations because those are outside the assignment's risk focus and could disturb the shared sandbox.
+The public sandbox can cold-start, throttle requests, and reset approximately every ten minutes. The client retries one transient 418 or GET 5xx response, but it does not retry business assertion failures. The exact `Accept: application/json` header is used because the sandbox rejects REST Assured's expanded default header with HTTP 418.
 
-## Known limitations
-
-The public sandbox can cold-start, throttle requests, or reset state while a run is in progress. Reported failures should therefore be checked against the attached request/response before triage. The API's invalid-input defects are environment behavior, not framework failures; see `BUGS.md`.
-
-## Deliverables
-
-- Defect evidence and runnable reproduction: [`BUGS.md`](BUGS.md)
-- Interview-oriented design notes: [`INTERVIEW_NOTES.md`](INTERVIEW_NOTES.md)
-- HTML report: `reports/allure-report/index.html`
+The project is focused on functional API checks. It does not perform load, stress, concurrency, or exhaustive query-combination testing. Known API defects and their reproduction evidence are listed in [`BUGS.md`](BUGS.md). Interview-oriented explanations are in [`INTERVIEW_NOTES.md`](INTERVIEW_NOTES.md).

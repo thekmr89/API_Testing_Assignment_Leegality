@@ -1,0 +1,3 @@
+Test: invalidDateRangeShouldBeRejected
+Description: Invalid booking date ranges are rejected
+Failure: java.lang.AssertionError: checkout equal to checkin returned HTTP 200 with body {"bookingid":2563,"booking":{"firstname":"QAf2a725e8","lastname":"Automationf2a725e8","totalprice":250,"depositpaid":true,"bookingdates":{"checkin":"2026-11-10","checkout":"2026-11-10"},"additionalneeds":"Breakfast"}} expected [true] but found [false]

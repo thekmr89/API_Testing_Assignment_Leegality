@@ -36,29 +36,16 @@ public abstract class BaseTest {
         try {
             token = authClient.getToken();
         } catch (RuntimeException ignored) {
+            // Cleanup is best effort; an authentication outage must not hide the test result.
             return;
         }
         for (Integer id : createdBookingIds) {
             try {
                 bookingClient.deleteBooking(id, token);
             } catch (RuntimeException ignored) {
-                // Cleanup must not replace the original test result.
+                // A cleanup failure must not replace the original test result.
             }
         }
-    }
-
-    protected Booking createAndRegister(Booking booking) {
-        Response response = bookingClient.createBooking(booking);
-        if (response.statusCode() != 200 && response.statusCode() != 201) {
-            fail("Fixture creation failed: HTTP " + response.statusCode() + " " + response.asString());
-        }
-        try {
-            BookingResponse created = objectMapper.readValue(response.asString(), BookingResponse.class);
-            createdBookingIds.add(created.getBookingid());
-        } catch (Exception e) {
-            fail("Fixture creation response could not be parsed: " + e.getMessage());
-        }
-        return booking;
     }
 
     protected int createAndRegisterId(Booking booking) {

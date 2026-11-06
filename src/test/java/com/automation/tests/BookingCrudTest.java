@@ -4,8 +4,6 @@ import com.automation.base.BaseTest;
 import com.automation.models.Booking;
 import com.automation.models.BookingResponse;
 import com.automation.utils.TestDataFactory;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.Description;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Severity;
@@ -16,12 +14,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.List;
+import java.util.Map;
 
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.not;
 
 @Feature("Booking CRUD")
 public class BookingCrudTest extends BaseTest {
@@ -33,7 +30,7 @@ public class BookingCrudTest extends BaseTest {
         int id = createAndRegisterId(original);
 
         bookingClient.getBooking(id).then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/booking-schema.json"));
-        assertBookingField(id, "firstname", original.getFirstname());
+        bookingClient.getBooking(id).then().statusCode(200).body("firstname", equalTo(original.getFirstname()));
 
         String token = authClient.getToken();
         Booking fullUpdate = TestDataFactory.validBooking();
@@ -42,7 +39,7 @@ public class BookingCrudTest extends BaseTest {
         put.then().statusCode(200).body("firstname", equalTo("FullUpdate"), "totalprice", equalTo(fullUpdate.getTotalprice()));
         bookingClient.getBooking(id).then().statusCode(200).body("firstname", equalTo("FullUpdate"));
 
-        Response patch = bookingClient.patchBooking(id, java.util.Map.of("lastname", "PatchUpdate"), token);
+        Response patch = bookingClient.patchBooking(id, Map.of("lastname", "PatchUpdate"), token);
         patch.then().statusCode(200).body("lastname", equalTo("PatchUpdate"));
         bookingClient.getBooking(id).then().statusCode(200).body("lastname", equalTo("PatchUpdate"));
 
@@ -56,7 +53,7 @@ public class BookingCrudTest extends BaseTest {
         Booking booking = TestDataFactory.validBooking();
         Response response = bookingClient.createBooking(booking);
         response.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/booking-create-response-schema.json"));
-        registerId(response);
+        registerCreatedBooking(response);
     }
 
     @Test(groups = {"regression", "crud", "contract"}, description = "Booking list supports firstname filtering and has the expected shape")
@@ -66,7 +63,7 @@ public class BookingCrudTest extends BaseTest {
         int id = createAndRegisterId(booking);
         Response list = bookingClient.listBookingsByFirstname(booking.getFirstname());
         list.then().statusCode(200).body(matchesJsonSchemaInClasspath("schemas/booking-list-schema.json"));
-        List<Integer> ids = new ObjectMapper().readTree(list.asString()).findValuesAsText("bookingid")
+        List<Integer> ids = objectMapper.readTree(list.asString()).findValuesAsText("bookingid")
                 .stream().map(Integer::valueOf).toList();
         Assert.assertTrue(ids.contains(id), "Filtered list did not contain the created booking ID " + id);
     }
@@ -105,7 +102,7 @@ public class BookingCrudTest extends BaseTest {
         int id = createAndRegisterId(TestDataFactory.validBooking());
         Response response = switch (operation) {
             case "PUT" -> bookingClient.updateBooking(id, TestDataFactory.validBooking(), null);
-            case "PATCH" -> bookingClient.patchBooking(id, java.util.Map.of("firstname", "NoAuth"), null);
+            case "PATCH" -> bookingClient.patchBooking(id, Map.of("firstname", "NoAuth"), null);
             case "DELETE" -> bookingClient.deleteBooking(id, null);
             default -> throw new IllegalArgumentException("Unsupported operation " + operation);
         };
@@ -113,11 +110,7 @@ public class BookingCrudTest extends BaseTest {
                 operation + " without authentication returned HTTP " + response.statusCode());
     }
 
-    private void assertBookingField(int id, String field, String expected) {
-        bookingClient.getBooking(id).then().statusCode(200).body(field, equalTo(expected));
-    }
-
-    private void registerId(Response response) {
+    private void registerCreatedBooking(Response response) {
         try {
             int id = objectMapper.readValue(response.asString(), BookingResponse.class).getBookingid();
             registerCreatedBookingId(id);
