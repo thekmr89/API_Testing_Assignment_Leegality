@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Restful Booker API Suite" verbose="1" preserve-order="true">
+    <listeners>
+        <listener class-name="com.automation.listeners.FailureListener"/>
+    </listeners>
+    <test name="API regression tests">
+        <classes>
+            <class name="com.automation.tests.HealthCheckTest"/>
+            <class name="com.automation.tests.AuthenticationTest"/>
+            <class name="com.automation.tests.BookingCrudTest"/>
+            <class name="com.automation.tests.BookingValidationTest"/>
+        </classes>
+    </test>
+</suite>

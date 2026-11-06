@@ -1,0 +1,4 @@
+Test: malformedBookingPayloadShouldBeRejected
+Description: Malformed booking payloads produce a client validation error
+Failure: java.lang.AssertionError: 1 expectation failed.
+Expected status code (a value equal to or greater than <400> and a value less than <500>) but a value less than <500> <500> was equal to <500>.

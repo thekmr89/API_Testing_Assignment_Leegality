@@ -1,0 +1,10 @@
+target/
+allure-results/
+.allure/
+.env
+*.token
+*.log
+.idea/
+*.iml
+.vscode/
+API Testing Assignment Leegality.pdf

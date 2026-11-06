@@ -1,0 +1,4 @@
+Test: invalidCredentialsShouldBeRejected
+Description: Invalid credentials must be rejected with a client error
+Failure: java.lang.AssertionError: 1 expectation failed.
+Expected status code (a value equal to or greater than <400> and a value less than <500>) but a value equal to or greater than <400> <200> was less than <400>.

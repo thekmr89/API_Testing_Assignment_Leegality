@@ -1,0 +1,3 @@
+Test: invalidDateRangeShouldBeRejected
+Description: Invalid booking date ranges are rejected
+Failure: java.lang.AssertionError: invalid calendar date returned HTTP 200 with body {"bookingid":596,"booking":{"firstname":"QA2884bf23","lastname":"Automation2884bf23","totalprice":250,"depositpaid":true,"bookingdates":{"checkin":"2026-03-02","checkout":"2026-03-01"},"additionalneeds":"Breakfast"}} expected [true] but found [false]

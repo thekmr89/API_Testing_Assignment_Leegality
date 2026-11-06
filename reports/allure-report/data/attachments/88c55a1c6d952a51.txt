@@ -1,0 +1,3 @@
+Test: invalidDateRangeShouldBeRejected
+Description: Invalid booking date ranges are rejected
+Failure: java.lang.AssertionError: malformed date returned HTTP 200 with body {"bookingid":570,"booking":{"firstname":"QAbc9e87ba","lastname":"Automationbc9e87ba","totalprice":250,"depositpaid":true,"bookingdates":{"checkin":"0NaN-aN-aN","checkout":"2026-11-12"},"additionalneeds":"Breakfast"}} expected [true] but found [false]
